@@ -15,7 +15,7 @@ env:
 jobs:
   build:
     name: Build anogskiller.dylib
-    runs-on: macos-14
+    runs-on: macos-13
     timeout-minutes: 30
 
     steps:
@@ -27,6 +27,7 @@ jobs:
       - name: Show runner info
         run: |
           echo "macOS: $(sw_vers -productVersion)"
+          echo "Arch: $(uname -m)"
           echo "Xcode: $(xcodebuild -version | head -1)"
           xcrun --sdk iphoneos --show-sdk-version
 
@@ -41,7 +42,6 @@ jobs:
         run: |
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$THEOS"
           echo "$THEOS/bin" >> $GITHUB_PATH
-          "$THEOS/bin/dm.pl" --help 2>&1 | head -2 || true
 
       - name: Install Theos SDKs
         run: |
@@ -57,7 +57,7 @@ jobs:
           echo 'int main(){return 0;}' > /tmp/t.c
           xcrun -sdk iphoneos clang /tmp/t.c -o /tmp/t -arch arm64 && echo "clang OK"
 
-      - name: Build LiteHook (from source)
+      - name: Build LiteHook
         run: |
           git clone --depth 1 https://github.com/opa334/litehook /tmp/litehook
           cd /tmp/litehook
@@ -71,10 +71,8 @@ jobs:
 
           find . -name "*.a" -exec cp {} "$GITHUB_WORKSPACE/vendor/litehook/lib/" \;
 
-          echo "== headers =="
-          ls -la "$GITHUB_WORKSPACE/vendor/litehook/include/"
-          echo "== libs =="
-          ls -la "$GITHUB_WORKSPACE/vendor/litehook/lib/"
+          echo "== headers =="; ls -la "$GITHUB_WORKSPACE/vendor/litehook/include/"
+          echo "== libs ==";    ls -la "$GITHUB_WORKSPACE/vendor/litehook/lib/"
 
       - name: Sanity check vendor files
         run: |
@@ -107,7 +105,7 @@ jobs:
           DYLIB="${{ steps.locate.outputs.dylib_path }}"
           ldid -Sentitlements.plist "$DYLIB"
           echo "signed OK"
-          otool -l "$DYLIB" | grep -A2 LC_CODE_SIGNATURE | head -3
+          otool -l "$DYLIB" | grep -A2 LC_CODE_SIGNATURE | head -3 || true
 
       - name: Package artifact
         run: |
@@ -116,7 +114,7 @@ jobs:
           cp "$DYLIB" out/anogskiller.dylib
           cd out
           zip -9 anogskiller-dylib.zip anogskiller.dylib
-          sha256sum anogskiller-dylib.zip > anogskiller-dylib.zip.sha256
+          shasum -a 256 anogskiller-dylib.zip > anogskiller-dylib.zip.sha256
           ls -la
 
       - name: Upload artifact
@@ -151,8 +149,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Item | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Runner | \`$(uname -m)\` / macOS $(sw_vers -productVersion) |" >> $GITHUB_STEP_SUMMARY
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Ref | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           if [ -f out/anogskiller.dylib ]; then
             SIZE=$(stat -f%z out/anogskiller.dylib)
             ARCHS=$(lipo -info out/anogskiller.dylib | sed 's/.*: //')
