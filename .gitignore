@@ -1,0 +1,26 @@
+# Theos build artifacts
+.theos/
+packages/
+*.deb
+*.dylib
+*.a
+
+# CI-populated vendor
+vendor/litehook/
+vendor/*/lib/
+vendor/*/include/
+
+# macOS
+.DS_Store
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Build output
+out/
